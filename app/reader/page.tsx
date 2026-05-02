@@ -30,7 +30,15 @@ function ReaderContent() {
   const [headings, setHeadings] = React.useState<{ id: string; text: string; level: number }[]>([]);
   const [progress, setProgress] = React.useState(0);
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const throttleTimeout = React.useRef<NodeJS.Timeout | null>(null);
+  const restoredChapterRef = React.useRef<string | null>(null);
   const [isInitializing, setIsInitializing] = React.useState(true);
+
+  React.useEffect(() => {
+    return () => {
+      if (throttleTimeout.current) clearTimeout(throttleTimeout.current);
+    };
+  }, []);
 
   // Determine raw index url
   const rawIndexUrl = urlParam ? toRawUrl(urlParam) : null;
@@ -98,7 +106,8 @@ function ReaderContent() {
 
     const handleScroll = () => {
       if (!ticking) {
-        window.requestAnimationFrame(async () => {
+        window.requestAnimationFrame(() => {
+          if (!scroller) return;
           const scrollTop = scroller.scrollTop;
           const scrollHeight = scroller.scrollHeight;
           const clientHeight = scroller.clientHeight;
@@ -113,7 +122,12 @@ function ReaderContent() {
           }
 
           // Throttle saving progress to avoid hitting storage too much
-          updateBookProgress(activeBook.id, activeChapterUrl, scrollTop);
+          if (!throttleTimeout.current) {
+            throttleTimeout.current = setTimeout(() => {
+              updateBookProgress(activeBook.id, activeChapterUrl, scrollTop);
+              throttleTimeout.current = null;
+            }, 500);
+          }
 
           ticking = false;
         });
@@ -129,16 +143,30 @@ function ReaderContent() {
   React.useEffect(() => {
     const restoreScroll = async () => {
       if (chapterContent && activeBook && activeChapterUrl && scrollRef.current) {
+        if (restoredChapterRef.current === activeChapterUrl) return;
+
         setTimeout(async () => {
           const savedProgress = await storageAdapter.getProgress(activeBook.baseRaw, activeChapterUrl);
-          if (scrollRef.current && savedProgress > 0) {
-            scrollRef.current.scrollTo({ top: savedProgress });
+          if (scrollRef.current) {
+            if (savedProgress > 0) {
+              scrollRef.current.scrollTo({ top: savedProgress });
+            }
+            
+            // Mark as restored for this chapter so it doesn't jump while scrolling
+            restoredChapterRef.current = activeChapterUrl;
+            
+            // Check completion for short chapters after content has rendered
+            const scroller = scrollRef.current;
+            const scrollPercentage = (scroller.scrollTop + scroller.clientHeight) / scroller.scrollHeight;
+            if (scrollPercentage >= 0.95 || scroller.scrollHeight <= scroller.clientHeight + 50) {
+              markChapterRead(activeBook.id, activeChapterUrl);
+            }
           }
-        }, 100);
+        }, 150); // slight delay to allow rendering
       }
     };
     restoreScroll();
-  }, [chapterContent, activeBook, activeChapterUrl]);
+  }, [chapterContent, activeBook, activeChapterUrl, markChapterRead]);
 
 
   if (!urlParam) {
