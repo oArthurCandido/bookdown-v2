@@ -1,0 +1,11 @@
+{
+  "title": "Bookdown Application Architecture",
+  "summary": "Detailed overview of the Bookdown (GitBook Reader) single-file SPA architecture, including state management, URL resolution, and Markdown rendering logic.",
+  "updatedAt": "2026-05-02T11:49:00Z",
+  "references": [
+    {
+      "type": "file",
+      "path": "/home/arthur/code/projects/pessoal/bookdown-v2/index.html"
+    }
+  ]
+}
