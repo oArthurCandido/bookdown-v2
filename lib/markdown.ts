@@ -9,21 +9,21 @@ export function extractChaptersFromMarkdown(md: string, base: string): ChapterMe
   const pushListItems = (items: any[]) => {
     for (const it of items) {
       // Find links inside list items
-      const textTokens = it.tokens || [];
+      const textTokens = (it as any).tokens || [];
       for (const t of textTokens) {
-        if (t.type === "text" && t.tokens) {
-          const linkToken = t.tokens.find((subT: any) => subT.type === "link");
+        if (t.type === "text" && (t as any).tokens) {
+          const linkToken = (t as any).tokens.find((subT: any) => subT.type === "link");
           if (linkToken) {
-            const raw = resolveRelative(base, linkToken.href);
+            const raw = resolveRelative(base, (linkToken as any).href);
             chapters.push({
-              title: linkToken.text || "Chapter",
+              title: (linkToken as any).text || "Chapter",
               url: raw,
             });
           }
         } else if (t.type === "link") {
-          const raw = resolveRelative(base, t.href);
+          const raw = resolveRelative(base, (t as any).href);
           chapters.push({
-            title: t.text || "Chapter",
+            title: (t as any).text || "Chapter",
             url: raw,
           });
         }
@@ -32,8 +32,8 @@ export function extractChaptersFromMarkdown(md: string, base: string): ChapterMe
   };
 
   for (const t of tokens) {
-    if (t.type === "list" && t.items?.length) {
-      pushListItems(t.items);
+    if (t.type === "list" && (t as any).items?.length) {
+      pushListItems((t as any).items);
       if (chapters.length) break; // Only take the first list with links
     }
   }
@@ -47,23 +47,23 @@ export function extractBookInfoFromMarkdown(md: string, base: string): { title: 
   let title: string | null = null;
 
   for (const t of tokens) {
-    if (t.type === "heading" && t.depth === 1 && !title) {
-      title = t.text;
+    if (t.type === "heading" && (t as any).depth === 1 && !title) {
+      title = (t as any).text;
     }
 
     if (t.type === "paragraph" && !coverImage) {
-      const imgToken = t.tokens?.find((subT: any) => subT.type === "image");
+      const imgToken = (t as any).tokens?.find((subT: any) => subT.type === "image");
       if (imgToken) {
-        coverImage = resolveRelative(base, imgToken.href);
+        coverImage = resolveRelative(base, (imgToken as any).href);
       } else {
         // sometimes HTML img tag is used
-        const htmlMatch = t.text.match(/<img[^>]+src\s*=\s*["']([^"']+)["'][^>]*>/i);
+        const htmlMatch = (t as any).text.match(/<img[^>]+src\s*=\s*["']([^"']+)["'][^>]*>/i);
         if (htmlMatch) {
           coverImage = resolveRelative(base, htmlMatch[1]);
         }
       }
     } else if (t.type === "html" && !coverImage) {
-      const htmlMatch = t.text.match(/<img[^>]+src\s*=\s*["']([^"']+)["'][^>]*>/i);
+      const htmlMatch = (t as any).text.match(/<img[^>]+src\s*=\s*["']([^"']+)["'][^>]*>/i);
       if (htmlMatch) {
         coverImage = resolveRelative(base, htmlMatch[1]);
       }

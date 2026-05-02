@@ -18,7 +18,7 @@ import { StorageAdapter, LocalStorageAdapter } from "@/lib/storage";
 
 const storageAdapter: StorageAdapter = new LocalStorageAdapter();
 
-export default function ReaderPage() {
+function ReaderContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const urlParam = searchParams.get("url");
@@ -113,7 +113,6 @@ export default function ReaderPage() {
           }
 
           // Throttle saving progress to avoid hitting storage too much
-          // (In a real app, use a proper debounce hook)
           updateBookProgress(activeBook.id, activeChapterUrl, scrollTop);
 
           ticking = false;
@@ -130,7 +129,6 @@ export default function ReaderPage() {
   React.useEffect(() => {
     const restoreScroll = async () => {
       if (chapterContent && activeBook && activeChapterUrl && scrollRef.current) {
-        // Small delay to allow DOM to render the markdown
         setTimeout(async () => {
           const savedProgress = await storageAdapter.getProgress(activeBook.baseRaw, activeChapterUrl);
           if (scrollRef.current && savedProgress > 0) {
@@ -240,5 +238,23 @@ export default function ReaderPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function ReaderPage() {
+  return (
+    <React.Suspense fallback={
+      <div className="flex h-screen flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-pulse flex flex-col items-center gap-4">
+            <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <ReaderContent />
+    </React.Suspense>
   );
 }
