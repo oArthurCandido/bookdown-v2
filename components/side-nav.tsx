@@ -95,8 +95,18 @@ export function SideNav({
                             e.preventDefault();
                             const el = document.getElementById(h.id);
                             if (el) {
-                              const y = el.getBoundingClientRect().top + window.scrollY - 80;
-                              window.scrollTo({ top: y, behavior: "smooth" });
+                              const scroller = el.closest('main');
+                              if (scroller) {
+                                const scrollerRect = scroller.getBoundingClientRect();
+                                const elRect = el.getBoundingClientRect();
+                                const scrollTop = scroller.scrollTop;
+                                scroller.scrollTo({
+                                  top: scrollTop + (elRect.top - scrollerRect.top) - 20, // 20px top padding
+                                  behavior: "smooth"
+                                });
+                              } else {
+                                el.scrollIntoView({ behavior: "smooth", block: "start" });
+                              }
                             }
                             setIsOpen(false);
                           }}

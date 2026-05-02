@@ -23,19 +23,16 @@ export function ReadingArea({ content, book, chapterUrl, onHeadingsExtracted }: 
       breaks: false,
     });
     
-    // marked.parse can be synchronous if we don't use async extensions
     const parsedHtml = marked.parse(content, { async: false }) as string;
-    setHtml(parsedHtml);
-  }, [content]);
-
-  React.useEffect(() => {
-    if (!articleRef.current || !html) return;
-
-    const container = articleRef.current;
+    
+    // Create a temporary DOM element to safely manipulate HTML
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = parsedHtml;
+    
     const base = baseOfRaw(chapterUrl);
 
-    // Rewrite resource links (images, links)
-    const imgs = container.querySelectorAll("img");
+    // Rewrite resource links
+    const imgs = tempDiv.querySelectorAll("img");
     imgs.forEach((img) => {
       const src = img.getAttribute("src");
       if (src) {
@@ -44,20 +41,17 @@ export function ReadingArea({ content, book, chapterUrl, onHeadingsExtracted }: 
       }
     });
 
-    const links = container.querySelectorAll("a");
+    const links = tempDiv.querySelectorAll("a");
     links.forEach((a) => {
       const href = a.getAttribute("href");
-      if (href) {
-        // If it's not a hash link, resolve it
-        if (!href.startsWith("#")) {
-          a.setAttribute("href", resolveRelative(base, href));
-          a.setAttribute("target", "_blank");
-        }
+      if (href && !href.startsWith("#")) {
+        a.setAttribute("href", resolveRelative(base, href));
+        a.setAttribute("target", "_blank");
       }
     });
 
     // Extract headings for inner TOC
-    const headingElements = container.querySelectorAll("h1, h2, h3, h4");
+    const headingElements = tempDiv.querySelectorAll("h1, h2, h3, h4");
     const extractedHeadings: { id: string; text: string; level: number }[] = [];
     
     const slugify = (str: string) => 
@@ -78,8 +72,9 @@ export function ReadingArea({ content, book, chapterUrl, onHeadingsExtracted }: 
     });
 
     onHeadingsExtracted(extractedHeadings);
+    setHtml(tempDiv.innerHTML);
 
-  }, [html, chapterUrl, onHeadingsExtracted]);
+  }, [content, chapterUrl, onHeadingsExtracted]);
 
   return (
     <article 
