@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>GitBook Reader - Leitor de livros Markdown do GitHub</title>
+    <meta
+      name="description"
+      content="Leitor de livros/documentos Markdown do GitHub com histórico, sumário, TOC interno e progresso salvo no navegador."
+    />
+    <link rel="canonical" href="" id="canonical-link" />
+    <meta name="theme-color" content="#F5F5DC" />
+
+    <meta property="og:title" content="GitBook Reader" />
+    <meta
+      property="og:description"
+      content="Agregador e leitor de livros Markdown do GitHub. Histórico, TOC, sumário e progresso persistente."
+    />
+    <meta property="og:type" content="website" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "GitBook Reader",
+        "applicationCategory": "Productivity",
+        "description": "Leitor de livros/documentos Markdown do GitHub com histórico e progresso persistente.",
+        "operatingSystem": "Web"
+      }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+      /* --- ESTILO MODIFICADO: TEMA KINDLE/PAPEL --- */
+      :root {
+        /* Paleta de cores sóbrias */
+        --bg: 45, 33%, 96%; /* Cor de papel (bege bem claro) */
+        --bg-soft: 45, 33%, 94%; /* Um tom ligeiramente mais escuro para painéis */
+        --text: 0, 0%, 15%; /* Cinza escuro para texto, não preto puro */
+        --muted: 0, 0%, 40%; /* Cinza médio para textos secundários */
+        --primary: 210, 25%, 35%; /* Azul acinzentado sóbrio para botões e links */
+        --primary-strong: 210, 25%, 30%;
+        --accent: 200, 30%, 50%; /* Um tom de destaque sutil */
+        --card: 45, 33%, 98%; /* Cor de fundo para cartões, quase branco */
+        --border: 0, 0%, 85%; /* Borda cinza clara */
+        --success: 140, 40%, 45%; /* Verde sóbrio */
+        --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --radius: 10px;
+        --radius-sm: 8px;
+        --radius-xs: 6px;
+        --transition: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+
+      /* Base */
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: hsl(var(--bg));
+        color: hsl(var(--text));
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji",
+          "Segoe UI Emoji"; /* Fonte sem serifa para a UI */
+        line-height: 1.6;
+        letter-spacing: 0.2px;
+        /* Removed overflow: hidden to allow scrolling on home page */
+      }
+      .app-shell {
+        position: relative;
+        min-height: 100svh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        background-color: hsl(var(--bg)); /* Fundo simples, sem gradientes */
+      }
+
+      /* Header */
+      header.site-header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: saturate(100%) blur(8px);
+        background-color: hsla(var(--bg), 0.8); /* Fundo com transparência */
+        border-bottom: 1px solid hsl(var(--border));
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Header hidden on scroll (mobile only) */
+      @media (max-width: 768px) {
+        header.site-header.hidden {
+          transform: translateY(-100%);
+          display: none;
+        }
+        .reading-mode .main-content {
+          padding-top: 0;
+        }
+      }
+      #sidebar-toggle {
+        display: none;
+      }
+      .reading-mode #sidebar-toggle {
+        display: inline-grid;
+      }
+      @media (min-width: 768px) {
+        .reading-mode #sidebar-toggle {
+          display: none;
+        }
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .hamburger {
+        display: none;
+      }
+      @media (max-width: 900px) {
+        .container {
+          flex-wrap: wrap;
+        }
+        .hamburger {
+          display: inline-grid;
+        }
+        .load-row {
+          order: 3;
+          width: 100%;
+          margin-top: 12px;
+        }
+        .reading-mode .load-row {
+          display: none;
+        }
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+      }
+      .brand-badge {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: hsl(var(--primary));
+        box-shadow: none;
+      }
+      .brand h1 {
+        font-size: 18px;
+        margin: 0;
+      }
+
+      .loader {
+        display: none;
+        font-size: 14px;
+        color: hsl(var(--muted));
+      }
+
+      .load-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        align-items: center; /* Alinhamento vertical */
+      }
+      .input {
+        width: 100%;
+        height: 42px;
+        border-radius: var(--radius-sm);
+        background: hsl(var(--card));
+        color: hsl(var(--text));
+        border: 1px solid hsl(var(--border));
+        padding: 0 14px;
+        outline: none;
+        transition: box-shadow var(--transition), border-color var(--transition);
+      }
+      .input:focus {
+        box-shadow: 0 0 0 3px hsl(var(--primary) / 0.3);
+        border-color: hsl(var(--primary));
+      }
+      .btn {
+        height: 42px;
+        padding: 0 16px;
+        border-radius: var(--radius-sm);
+        border: 1px solid transparent;
+        background: hsl(var(--primary));
+        color: white;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        cursor: pointer;
+        transition: transform var(--transition), filter var(--transition),
+          box-shadow var(--transition);
+        box-shadow: var(--shadow);
+      }
+      .btn:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.08);
+      }
+      .btn:active {
+        transform: translateY(0);
+        filter: brightness(0.98);
+      }
+      .btn.secondary {
+        background: hsl(var(--card));
+        color: hsl(var(--text));
+        box-shadow: none;
+        border: 1px solid hsl(var(--border));
+      }
+      .btn.secondary:hover {
+        border-color: hsl(var(--primary));
+        background: hsl(var(--bg-soft));
+      }
+
+      /* Exit Reading Mode Button */
+      #exit-reading-btn {
+        display: none;
+      }
+
+      .reading-mode #exit-reading-btn {
+        display: inline-grid;
+      }
+
+      /* Views */
+      main {
+        height: calc(100svh);
+      }
+      .view {
+        height: 100%;
+        overflow: auto;
+      }
+
+      /* Home */
+      .home-wrap {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 22px;
+        padding: 22px 20px 40px;
+      }
+      .panel {
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius);
+        background: hsl(var(--bg-soft));
+      }
+      .panel-header {
+        padding: 16px 18px;
+        border-bottom: 1px solid hsl(var(--border));
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .panel-header h2 {
+        margin: 0;
+        font-size: 16px;
+        letter-spacing: 0.2px;
+      }
+      .panel-body {
+        padding: 14px 16px;
+      }
+
+      .history-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+      }
+      .history-item {
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius);
+        background: hsl(var(--card));
+        transition: background var(--transition), border-color var(--transition),
+          transform var(--transition);
+      }
+      .history-item:hover {
+        background: hsl(var(--primary) / 0.05);
+        border-color: hsl(var(--primary) / 0.6);
+        transform: translateY(-2px);
+      }
+      .book-cover {
+        width: 100%;
+        max-width: 200px;
+        height: auto;
+        margin: 0 auto 16px;
+        border-radius: var(--radius-sm);
+        box-shadow: 0 4px 8px hsla(0, 0%, 0%, 0.1);
+      }
+      .book-cover-placeholder {
+        width: 100%;
+        max-width: 200px;
+        height: 260px;
+        margin: 0 auto 16px;
+        border-radius: var(--radius-sm);
+        background: linear-gradient(
+          135deg,
+          hsl(var(--primary) / 0.1),
+          hsl(var(--primary) / 0.3)
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: hsl(var(--primary));
+        font-size: 48px;
+        font-weight: bold;
+      }
+      .history-title {
+        font-size: 16px;
+        font-weight: 700;
+        margin: 0 0 8px 0;
+        text-align: center;
+        line-height: 1.3;
+        color: hsl(var(--text));
+      }
+      .history-meta {
+        font-size: 13px;
+        color: hsl(var(--muted));
+        margin: 0 0 16px 0;
+        text-align: center;
+      }
+      .book-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: auto;
+      }
+      .btn-icon {
+        width: 36px;
+        height: 36px;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 10px;
+        cursor: pointer;
+        background: hsl(var(--card));
+        border: 1px solid hsl(var(--border));
+        color: hsl(var(--muted));
+        transition: var(--transition);
+      }
+      .btn-icon:hover {
+        color: hsl(var(--text));
+        border-color: hsl(var(--primary));
+        background: hsl(var(--bg-soft));
+      }
+      .btn-icon svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      /* Reader layout */
+      .reader {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        height: 100%;
+        position: relative;
+      }
+
+      .sidebar {
+        border-right: 1px solid hsl(var(--border));
+        background: hsl(var(--bg-soft));
+        overflow: auto;
+        transition: transform var(--transition);
+      }
+
+      @media (max-width: 900px) {
+        .reader {
+          grid-template-columns: 1fr;
+        }
+        .sidebar {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100svh;
+          z-index: 100;
+          transform: translateX(-100%);
+          border-right: none;
+          background: hsl(var(--bg) / 0.98);
+          backdrop-filter: blur(10px);
+        }
+        .sidebar.open {
+          transform: translateX(0);
+        }
+        .sidebar .s-inner {
+          padding: 100px 20px 20px;
+        }
+        .content {
+          height: 100%;
+        }
+      }
+      .sidebar .s-inner {
+        padding: 16px;
+      }
+      .book-title {
+        font-size: 16px;
+        margin: 0 0 10px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+      }
+      .nav-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 6px;
+      }
+      .nav-item {
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius-sm);
+        background: hsl(var(--card));
+      }
+      .chapter-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        text-align: left;
+        background: transparent;
+        color: hsl(var(--text));
+        border: none;
+        padding: 10px 12px;
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        transition: background var(--transition), border-color var(--transition),
+          transform var(--transition);
+      }
+      .chapter-btn:hover {
+        background: hsl(var(--primary) / 0.08);
+      }
+      .chapter-btn .dot {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: hsl(var(--border));
+        flex: 0 0 auto;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        border: 2px solid hsl(var(--border));
+        position: relative;
+      }
+      .chapter-btn .dot:hover {
+        transform: scale(1.1);
+        border-color: hsl(var(--primary));
+      }
+      .chapter-btn.read .dot {
+        background: hsl(var(--success));
+        border-color: hsl(var(--success));
+        color: white;
+      }
+      .chapter-btn.read .dot::after {
+        content: "✓";
+        font-size: 10px;
+      }
+      .chapter-title {
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.3;
+        letter-spacing: 0.2px;
+        cursor: pointer;
+        flex: 1;
+      }
+      .chapter-title:hover {
+        color: hsl(var(--primary));
+      }
+
+      .toc {
+        margin: 6px 0 10px 22px;
+        padding-left: 10px;
+        border-left: 2px solid hsl(var(--border));
+        display: grid;
+        gap: 6px;
+      }
+      .toc a {
+        display: block;
+        color: hsl(var(--muted));
+        text-decoration: none;
+        font-size: 13px;
+        padding: 4px 6px;
+        border-radius: 6px;
+        transition: background var(--transition), color var(--transition);
+      }
+      .toc a:hover {
+        color: hsl(var(--text));
+        background: hsl(var(--primary) / 0.12);
+      }
+      .toc a.active {
+        color: hsl(var(--primary-strong));
+        background: hsl(var(--primary) / 0.2);
+        font-weight: 600;
+      }
+
+      .content {
+        position: relative;
+        overflow: auto;
+        background-color: hsl(var(--bg));
+      }
+
+      /* Reading progress indicator */
+      .reading-progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 0%;
+        height: 3px;
+        background: hsl(var(--primary));
+        z-index: 1000;
+        transition: width 150ms ease;
+        opacity: 0;
+      }
+      .reading-progress.visible {
+        opacity: 1;
+      }
+
+      .article {
+        max-width: 800px; /* Um pouco mais estreito para melhor leitura */
+        margin: 0 auto;
+        padding: 28px 26px 80px;
+        font-family: "Georgia", "Times New Roman", serif; /* Fonte serifada para leitura */
+        font-size: 18px; /* Tamanho de fonte maior */
+        line-height: 1.7; /* Espaçamento maior */
+      }
+      .article h1,
+      .article h2,
+      .article h3,
+      .article h4,
+      .article h5 {
+        scroll-margin-top: 20px;
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; /* Títulos em sans-serif para contraste */
+        font-weight: 700;
+      }
+      .article h1 {
+        font-size: 32px;
+        line-height: 1.2;
+        margin: 10px 0 16px;
+      }
+      .article h2 {
+        font-size: 24px;
+        margin: 28px 0 10px;
+        border-bottom: 1px solid hsl(var(--border));
+        padding-bottom: 8px;
+      }
+      .article h3 {
+        font-size: 20px;
+        margin: 22px 0 8px;
+      }
+      .article p {
+        color: hsl(var(--text));
+        opacity: 0.95;
+      }
+      .article code {
+        background: hsl(var(--bg-soft));
+        padding: 2px 6px;
+        border-radius: 6px;
+        border: 1px solid hsl(var(--border));
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
+          Courier, monospace;
+        font-size: 0.9em;
+      }
+      .article pre {
+        background: hsl(var(--bg-soft));
+        padding: 16px;
+        border-radius: 10px;
+        border: 1px solid hsl(var(--border));
+        overflow: auto;
+      }
+      .article a {
+        color: hsl(var(--primary));
+        text-decoration: none;
+        border-bottom: 1px solid hsl(var(--primary) / 0.5);
+      }
+      .article a:hover {
+        background-color: hsl(var(--primary) / 0.1);
+      }
+      .article img {
+        max-width: 100%;
+        border-radius: 8px;
+        border: 1px solid hsl(var(--border));
+        box-shadow: var(--shadow);
+      }
+
+      /* Chapter Navigation */
+      .chapter-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 48px;
+        padding-top: 24px;
+        border-top: 1px solid hsl(var(--border));
+        gap: 16px;
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; /* UI em sans-serif */
+      }
+
+      .chapter-nav-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        background: hsl(var(--card));
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius-sm);
+        color: hsl(var(--text));
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 14px;
+        transition: all var(--transition);
+        cursor: pointer;
+        max-width: 280px;
+      }
+
+      .chapter-nav-btn:hover {
+        border-color: hsl(var(--primary));
+        box-shadow: var(--shadow);
+        transform: translateY(-1px);
+      }
+
+      .chapter-nav-btn:active {
+        transform: translateY(0);
+      }
+
+      .chapter-nav-btn.prev {
+        flex-direction: row;
+      }
+
+      .chapter-nav-btn.next {
+        flex-direction: row-reverse;
+        text-align: right;
+      }
+
+      .chapter-nav-btn .nav-icon {
+        width: 16px;
+        height: 16px;
+        opacity: 0.7;
+        transition: opacity var(--transition);
+      }
+
+      .chapter-nav-btn:hover .nav-icon {
+        opacity: 1;
+      }
+
+      .chapter-nav-btn .nav-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+
+      .chapter-nav-btn .nav-label {
+        font-size: 12px;
+        opacity: 0.7;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+      }
+
+      .chapter-nav-btn .nav-title {
+        font-size: 14px;
+        line-height: 1.3;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      @media (max-width: 600px) {
+        .chapter-nav {
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .chapter-nav-btn {
+          width: 100%;
+          max-width: none;
+          justify-content: center;
+        }
+
+        .chapter-nav-btn.next {
+          flex-direction: row;
+          text-align: left;
+        }
+
+        .chapter-nav-btn .nav-title {
+          white-space: normal;
+          overflow: visible;
+          text-overflow: unset;
+        }
+      }
+
+      .empty {
+        color: hsl(var(--muted));
+        padding: 16px;
+        text-align: center;
+      }
+      .error {
+        color: #c84a4a;
+        padding: 8px 12px;
+        border: 1px solid #e08f8f;
+        background: #fbebeb;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="reading-progress" id="reading-progress"></div>
+    <div class="app-shell" id="app">
+      <header class="site-header">
+        <div class="container">
+          <div class="header-left">
+            <button
+              id="sidebar-toggle"
+              class="btn-icon hamburger"
+              aria-label="Alternar menu"
+              aria-expanded="false"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+            <button
+              id="exit-reading-btn"
+              class="btn-icon exit-reading-btn"
+              aria-label="Sair do modo de leitura"
+              title="Voltar à tela inicial"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+            <div class="brand" aria-label="GitBook Reader">
+              <div class="brand-badge" aria-hidden="true"></div>
+              <h1>GitBook Reader</h1>
+            </div>
+          </div>
+          <div class="load-row" role="search">
+            <input
+              id="url-input"
+              class="input"
+              type="text"
+              placeholder="Cole a URL do arquivo no GitHub (ex: https://github.com/user/repo/blob/main/README.md)"
+              aria-label="URL do documento no GitHub"
+            />
+            <button id="load-btn" class="btn" aria-label="Carregar livro">
+              Carregar Livro
+            </button>
+          </div>
+          <div class="loader" id="loader">Carregando…</div>
+        </div>
+      </header>
+
+      <main>
+        <section id="home-view" class="view" aria-label="Tela inicial">
+          <div class="home-wrap container">
+            <article class="panel" aria-labelledby="history-title">
+              <div class="panel-header">
+                <h2 id="history-title">Meus Livros</h2>
+                <button class="btn secondary" id="clear-history">
+                  Limpar todo o histórico
+                </button>
+              </div>
+              <div class="panel-body">
+                <ul id="history-list" class="history-list"></ul>
+                <div id="history-empty" class="empty">
+                  Nenhum livro adicionado ainda.
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="reader-view" class="view" hidden aria-label="Leitor">
+          <div class="reader">
+            <aside class="sidebar" aria-label="Navegação do livro">
+              <div class="s-inner">
+                <h2 class="book-title" id="book-title">—</h2>
+                <ul id="book-toc" class="nav-list"></ul>
+              </div>
+            </aside>
+            <section
+              class="content"
+              aria-label="Conteúdo do capítulo"
+              id="content-scroll"
+            >
+              <article class="article" id="article"></article>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      // Utilities
+      const $ = (sel, ctx = document) => ctx.querySelector(sel);
+      const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+      const byId = (id) => document.getElementById(id);
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+      // Signature ambient light following pointer
+      document.addEventListener("pointermove", (e) => {
+        const r = document.documentElement.style;
+        const x = (e.clientX / window.innerWidth) * 100;
+        const y = (e.clientY / window.innerHeight) * 100;
+        r.setProperty("--mx", x + "%");
+        r.setProperty("--my", y + "%");
+      });
+
+      // Local Storage Keys
+      const LS_HISTORY = "gbreader.history.v1";
+      const progressKey = (bookBase, chapterUrl) =>
+        `progress-${encodeURIComponent(bookBase)}-${encodeURIComponent(
+          chapterUrl
+        )}`;
+
+      // State
+      let state = {
+        page: "home",
+        book: null, // { id, title, indexUrl, baseRaw, chapters: [ {title, url} ], lastChapterUrl, lastScroll, readChapters: [] }
+        chapterUrl: null,
+        observer: null,
+      };
+
+      // Mobile reading mode state
+      let mobileReadingState = {
+        isScrolling: false,
+        lastScrollY: 0,
+        ticking: false,
+        isMobile: () => window.innerWidth <= 768,
+      };
+
+      // History helpers
+      function readHistory() {
+        try {
+          return JSON.parse(localStorage.getItem(LS_HISTORY) || "[]");
+        } catch {
+          return [];
+        }
+      }
+      function writeHistory(items) {
+        localStorage.setItem(LS_HISTORY, JSON.stringify(items));
+      }
+      function upsertBook(book) {
+        const list = readHistory();
+        const idx = list.findIndex((b) => b.id === book.id);
+        if (idx >= 0)
+          list[idx] = {
+            ...list[idx],
+            ...book,
+            updatedAt: new Date().toISOString(),
+          };
+        else
+          list.unshift({
+            ...book,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+        writeHistory(list);
+        return list[idx >= 0 ? idx : 0];
+      }
+      function removeBook(id) {
+        // First, get the book to remove its related data
+        const book = readHistory().find((b) => b.id === id);
+        if (book) {
+          clearBookRelatedData(book);
+        }
+        writeHistory(readHistory().filter((b) => b.id !== id));
+      }
+
+      function clearBookRelatedData(book) {
+        // Remove all progress keys for this book's chapters
+        if (book.chapters && book.baseRaw) {
+          book.chapters.forEach((chapter) => {
+            const key = progressKey(book.baseRaw, chapter.url);
+            localStorage.removeItem(key);
+          });
+        }
+
+        // Also try to remove progress for the main index URL if it exists
+        if (book.indexUrl && book.baseRaw) {
+          const indexKey = progressKey(book.baseRaw, book.indexUrl);
+          localStorage.removeItem(indexKey);
+        }
+
+        // Remove any other book-related keys that might exist
+        const bookId = encodeURIComponent(book.id);
+        const bookBase = book.baseRaw ? encodeURIComponent(book.baseRaw) : "";
+
+        // Iterate through localStorage to find and remove related keys
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (
+            key &&
+            (key.includes(bookId) || (bookBase && key.includes(bookBase)))
+          ) {
+            keysToRemove.push(key);
+          }
+        }
+
+        keysToRemove.forEach((key) => localStorage.removeItem(key));
+      }
+
+      function clearAllBooksData() {
+        // Get all books before clearing
+        const books = readHistory();
+
+        // Clear data for each book
+        books.forEach((book) => clearBookRelatedData(book));
+
+        // Clear the history
+        writeHistory([]);
+      }
+
+      // URL conversion
+      function toRawUrl(url) {
+        try {
+          const u = new URL(url.trim());
+          if (u.hostname === "raw.githubusercontent.com") return u.toString();
+          if (u.hostname === "github.com") {
+            // /user/repo/blob/branch/path/to/file.md
+            const parts = u.pathname.split("/").filter(Boolean);
+            const user = parts[0];
+            const repo = parts[1];
+            // supports blob or raw path forms
+            let idxBlob = parts.indexOf("blob");
+            if (idxBlob !== -1) {
+              const branch = parts[idxBlob + 1];
+              const rest = parts.slice(idxBlob + 2).join("/");
+              return `https://raw.githubusercontent.com/${user}/${repo}/${branch}/${rest}`;
+            }
+            // if already pointing to raw tree file via query? fallback
+          }
+          return url; // fallback unchanged
+        } catch {
+          return url;
+        }
+      }
+      function baseOfRaw(rawUrl) {
+        // directory base ending with '/'
+        const u = new URL(rawUrl);
+        const segs = u.pathname.split("/");
+        segs.pop();
+        u.pathname = segs.join("/") + "/";
+        return u.toString();
+      }
+      function resolveRelative(base, href) {
+        try {
+          return new URL(href, base).toString();
+        } catch {
+          return href;
+        }
+      }
+
+      // Analysis using Marked lexer
+      function extractChaptersFromMarkdown(md, base) {
+        const tokens = marked.lexer(md);
+        // find first list containing links
+        /** @type {{ title: string, url: string }[]} */
+        const chapters = [];
+        const pushListItems = (items) => {
+          for (const it of items) {
+            // item tokens may include link in text; render text tokens to find link tokens
+            const text = marked.parser(it.tokens || []);
+            // temp DOM parse
+            const div = document.createElement("div");
+            div.innerHTML = text;
+            const link = div.querySelector("a[href]");
+            if (link) {
+              const raw = resolveRelative(base, link.getAttribute("href"));
+              chapters.push({
+                title: (link.textContent || "Capítulo").trim(),
+                url: raw,
+              });
+            }
+          }
+        };
+        for (const t of tokens) {
+          if (t.type === "list" && t.items?.length) {
+            pushListItems(t.items);
+            if (chapters.length) break;
+          }
+        }
+        return chapters;
+      }
+
+      function extractBookInfoFromMarkdown(md, base) {
+        const tokens = marked.lexer(md);
+        let coverImage = null;
+        let title = null;
+
+        // Extract title from first heading
+        for (const t of tokens) {
+          if (t.type === "heading" && t.depth === 1 && !title) {
+            title = t.text;
+            break;
+          }
+        }
+
+        // Extract cover image with improved detection
+        // First try to find it in the raw markdown using regex
+        const imgMatch = md.match(/<img[^>]+src\s*=\s*["']([^"']+)["'][^>]*>/i);
+        if (imgMatch) {
+          const src = imgMatch[1];
+          coverImage = resolveRelative(base, src);
+        }
+
+        // If not found via regex, try token parsing
+        if (!coverImage) {
+          for (const t of tokens) {
+            // Check paragraphs that might contain images
+            if (t.type === "paragraph" || t.type === "html") {
+              const rendered = marked.parser([t]);
+              const div = document.createElement("div");
+              div.innerHTML = rendered;
+              const img = div.querySelector("img[src]");
+              if (img) {
+                const src = img.getAttribute("src");
+                if (src) {
+                  coverImage = resolveRelative(base, src);
+                  break;
+                }
+              }
+            }
+
+            // Also check for direct image tokens
+            if (t.type === "image" && t.href) {
+              coverImage = resolveRelative(base, t.href);
+              break;
+            }
+          }
+        }
+
+        return { title, coverImage };
+      }
+
+      async function fetchText(url) {
+        const res = await fetch(url, { headers: { Accept: "text/plain" } });
+        if (!res.ok) throw new Error("Falha ao carregar conteúdo");
+        return await res.text();
+      }
+
+      // Render Home
+      function renderHistory() {
+        const list = readHistory();
+        const ul = byId("history-list");
+        const empty = byId("history-empty");
+        ul.innerHTML = "";
+        if (!list.length) {
+          empty.style.display = "block";
+          return;
+        }
+        empty.style.display = "none";
+        for (const b of list) {
+          const li = document.createElement("li");
+          li.className = "history-item";
+
+          // Cover image or placeholder
+          if (b.coverImage) {
+            const img = document.createElement("img");
+            img.className = "book-cover";
+            img.src = b.coverImage;
+            img.alt = `Capa do livro: ${b.title}`;
+            img.loading = "lazy";
+
+            // Add error handling for failed image loads
+            img.addEventListener("error", () => {
+              // Replace with placeholder if image fails to load
+              const placeholder = document.createElement("div");
+              placeholder.className = "book-cover-placeholder";
+              placeholder.textContent = "📚";
+              placeholder.title = "Erro ao carregar imagem de capa";
+              img.parentNode.replaceChild(placeholder, img);
+            });
+
+            li.appendChild(img);
+          } else {
+            const placeholder = document.createElement("div");
+            placeholder.className = "book-cover-placeholder";
+            placeholder.textContent = "📚";
+            placeholder.title = "Sem imagem de capa disponível";
+            li.appendChild(placeholder);
+          }
+
+          // Book info
+          const title = document.createElement("h3");
+          title.className = "history-title";
+          title.textContent = b.title || "Sem título";
+
+          const meta = document.createElement("p");
+          meta.className = "history-meta";
+          meta.textContent = (b.chapters?.length || 1) + " capítulos";
+
+          // Actions
+          const actions = document.createElement("div");
+          actions.className = "book-actions";
+
+          const openBtn = document.createElement("button");
+          openBtn.className = "btn secondary";
+          openBtn.textContent = "Abrir Livro";
+          openBtn.addEventListener("click", () => openBookFromHistory(b.id));
+
+          const delBtn = document.createElement("button");
+          delBtn.className = "btn-icon";
+          delBtn.title = "Remover livro";
+          delBtn.setAttribute("aria-label", "Remover livro");
+          delBtn.innerHTML = "✕";
+          delBtn.addEventListener("click", () => {
+            if (confirm(`Remover "${b.title || "este livro"}" do histórico?`)) {
+              removeBook(b.id);
+              renderHistory();
+            }
+          });
+
+          actions.appendChild(openBtn);
+          actions.appendChild(delBtn);
+
+          li.appendChild(title);
+          li.appendChild(meta);
+          li.appendChild(actions);
+          ul.appendChild(li);
+        }
+      }
+
+      // Reader
+      function showView(name) {
+        state.page = name;
+        byId("home-view").hidden = name !== "home";
+        byId("reader-view").hidden = name !== "reader";
+
+        // Hide progress bar when not in reader
+        const progressBar = byId("reading-progress");
+        if (name !== "reader") {
+          progressBar.classList.remove("visible");
+        }
+
+        // Mobile reading mode control
+        const appShell = byId("app");
+        if (name === "reader") {
+          appShell.classList.add("reading-mode");
+          if (mobileReadingState.isMobile()) {
+            setupMobileScrollHandler();
+          }
+        } else {
+          appShell.classList.remove("reading-mode");
+          removeMobileScrollHandler();
+        }
+      }
+
+      function setCanonical(url) {
+        const c = byId("canonical-link");
+        if (c) c.href = location.href;
+        document.title = url
+          ? `GitBook Reader – ${state.book?.title || ""}`
+          : "GitBook Reader – Leitor de livros Markdown do GitHub";
+      }
+
+      function sanitizeMarkdown(md) {
+        // Keep as-is; Marked does not sanitize by default.
+        return md;
+      }
+
+      function rewriteResourceLinks(rootBase, container) {
+        // images and anchors
+        $$("img", container).forEach((img) => {
+          const src = img.getAttribute("src");
+          if (!src) return;
+          const abs = resolveRelative(rootBase, src);
+          img.setAttribute("src", abs);
+          img.setAttribute("loading", "lazy");
+          img.setAttribute(
+            "alt",
+            img.getAttribute("alt") || "Imagem do documento"
+          );
+        });
+        $$("a", container).forEach((a) => {
+          const href = a.getAttribute("href");
+          if (!href) return;
+          const abs = resolveRelative(rootBase, href);
+          a.setAttribute("href", abs);
+          // intercept internal .md links to navigate
+          a.addEventListener("click", (e) => {
+            const isMd =
+              /\.(md|markdown)(#.*)?$/i.test(abs) ||
+              abs.startsWith(state.book?.baseRaw || "");
+            if (isMd) {
+              e.preventDefault();
+              openChapter(abs);
+            } else {
+              a.target = "_blank";
+            }
+          });
+        });
+      }
+
+      function buildInnerTOC(container) {
+        const headings = $$("h1, h2, h3, h4", container);
+        const toc = document.createElement("div");
+        toc.className = "toc";
+        // Ensure IDs
+        const slug = (s) =>
+          s
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-");
+        headings.forEach((h, i) => {
+          if (!h.id) h.id = slug(h.textContent || "sec-" + i);
+        });
+        headings.forEach((h) => {
+          const a = document.createElement("a");
+          a.href = "#" + h.id;
+          a.textContent = h.textContent || "";
+          a.style.marginLeft =
+            ({ H1: 0, H2: 8, H3: 16, H4: 24 }[h.tagName] || 0) + "px";
+          a.addEventListener("click", (e) => {
+            e.preventDefault();
+            byId("content-scroll").scrollTo({
+              top: h.offsetTop - 12,
+              behavior: "smooth",
+            });
+            // Close sidebar on mobile after TOC navigation
+            closeSidebarOnMobile();
+          });
+          toc.appendChild(a);
+        });
+        return { toc, headings };
+      }
+
+      function observeHeadings(headings, tocEl) {
+        if (state.observer) {
+          state.observer.disconnect();
+          state.observer = null;
+        }
+        const map = new Map();
+        const links = $$("a", tocEl);
+        headings.forEach((h, idx) => map.set(h.id, links[idx]));
+        const root = byId("content-scroll");
+        const obs = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              const link = map.get(entry.target.id);
+              if (!link) return;
+              if (entry.isIntersecting) {
+                links.forEach((l) => l.classList.remove("active"));
+                link.classList.add("active");
+              }
+            });
+          },
+          { root, threshold: 0.1, rootMargin: "0px 0px -70% 0px" }
+        );
+        headings.forEach((h) => obs.observe(h));
+        state.observer = obs;
+      }
+
+      // Mobile Reading Mode Functions
+      function setupMobileScrollHandler() {
+        if (!mobileReadingState.isMobile()) return;
+
+        const scroller = byId("content-scroll");
+        const header = $("header.site-header");
+
+        // Ensure header starts visible
+        header.classList.remove("hidden");
+        mobileReadingState.lastScrollY = scroller.scrollTop;
+
+        const handleScroll = () => {
+          if (!mobileReadingState.ticking) {
+            requestAnimationFrame(() => {
+              updateHeaderVisibility();
+              mobileReadingState.ticking = false;
+            });
+            mobileReadingState.ticking = true;
+          }
+        };
+
+        const updateHeaderVisibility = () => {
+          const currentScrollY = scroller.scrollTop;
+          const scrollDelta = currentScrollY - mobileReadingState.lastScrollY;
+
+          // Hide header when scrolling down, show when scrolling up
+          if (scrollDelta > 10 && currentScrollY > 100) {
+            // Scrolling down - hide header
+            header.classList.add("hidden");
+          } else if (scrollDelta < -10) {
+            // Scrolling up - show header
+            header.classList.remove("hidden");
+          }
+
+          mobileReadingState.lastScrollY = currentScrollY;
+        };
+
+        // Add touch event to show navbar when tapping top area
+        const showHeaderOnTouch = (e) => {
+          if (e.clientY < 50) {
+            // Top 50px of screen
+            header.classList.remove("hidden");
+          }
+        };
+
+        document.addEventListener("touchstart", showHeaderOnTouch);
+        document.addEventListener("click", showHeaderOnTouch);
+
+        mobileReadingState.touchHandler = showHeaderOnTouch;
+
+        scroller.addEventListener("scroll", handleScroll, { passive: true });
+        mobileReadingState.scrollHandler = handleScroll;
+      }
+
+      function removeMobileScrollHandler() {
+        if (mobileReadingState.scrollHandler) {
+          const scroller = byId("content-scroll");
+          scroller.removeEventListener(
+            "scroll",
+            mobileReadingState.scrollHandler
+          );
+          mobileReadingState.scrollHandler = null;
+        }
+
+        if (mobileReadingState.touchHandler) {
+          document.removeEventListener(
+            "touchstart",
+            mobileReadingState.touchHandler
+          );
+          document.removeEventListener(
+            "click",
+            mobileReadingState.touchHandler
+          );
+          mobileReadingState.touchHandler = null;
+        }
+
+        // Always show header when leaving reading mode
+        const header = $("header.site-header");
+        header.classList.remove("hidden");
+      }
+
+      function exitReadingMode() {
+        showView("home");
+
+        // Close sidebar if open
+        const sidebar = document.querySelector(".sidebar");
+        const hamburger = byId("sidebar-toggle");
+        if (sidebar) {
+          sidebar.classList.remove("open");
+        }
+        if (hamburger) {
+          hamburger.setAttribute("aria-expanded", "false");
+        }
+      }
+
+      function markChapterAsRead(url) {
+        if (!state.book) return;
+        const set = new Set(state.book.readChapters || []);
+        if (!set.has(url)) {
+          set.add(url);
+          state.book.readChapters = Array.from(set);
+          upsertBook(state.book);
+          renderBookTOC();
+        }
+      }
+
+      function toggleChapterReadStatus(url) {
+        if (!state.book) return;
+        const set = new Set(state.book.readChapters || []);
+
+        if (set.has(url)) {
+          // Unmark as read
+          set.delete(url);
+        } else {
+          // Mark as read
+          set.add(url);
+        }
+
+        state.book.readChapters = Array.from(set);
+        upsertBook(state.book);
+        renderBookTOC();
+
+        return !set.has(url); // Return new read status
+      }
+
+      function checkIfChapterCompleted() {
+        if (!state.chapterUrl) return;
+
+        const scroller = byId("content-scroll");
+        const scrollTop = scroller.scrollTop;
+        const scrollHeight = scroller.scrollHeight;
+        const clientHeight = scroller.clientHeight;
+
+        // Calculate scroll percentage
+        const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+        const progressPercent = Math.min(scrollPercentage * 100, 100);
+
+        // Update reading progress bar
+        const progressBar = byId("reading-progress");
+        if (state.page === "reader") {
+          progressBar.style.width = progressPercent + "%";
+          progressBar.classList.add("visible");
+        } else {
+          progressBar.classList.remove("visible");
+        }
+
+        // Mark as read when user reaches 95% of the content
+        if (scrollPercentage >= 0.95) {
+          markChapterAsRead(state.chapterUrl);
+        }
+      }
+
+      function saveScrollProgress() {
+        if (!state.book || !state.chapterUrl) return;
+        const scroller = byId("content-scroll");
+        const key = progressKey(state.book.baseRaw, state.chapterUrl);
+        localStorage.setItem(key, String(scroller.scrollTop));
+        // Also store last position in book object
+        state.book.lastChapterUrl = state.chapterUrl;
+        state.book.lastScroll = scroller.scrollTop;
+        upsertBook(state.book);
+      }
+
+      function restoreScrollProgress() {
+        if (!state.book || !state.chapterUrl) return;
+        const scroller = byId("content-scroll");
+        const key = progressKey(state.book.baseRaw, state.chapterUrl);
+        const val = Number(localStorage.getItem(key) || "0");
+        if (Number.isFinite(val) && val >= 0) scroller.scrollTo({ top: val });
+      }
+
+      let throttleSave;
+      function attachScrollSaver() {
+        const scroller = byId("content-scroll");
+        scroller.removeEventListener("scroll", throttleSave);
+        throttleSave = () => {
+          if (attachScrollSaver.ticking) return;
+          attachScrollSaver.ticking = true;
+          requestAnimationFrame(() => {
+            saveScrollProgress();
+            checkIfChapterCompleted(); // Check if chapter is complete on scroll
+            attachScrollSaver.ticking = false;
+          });
+        };
+        scroller.addEventListener("scroll", throttleSave, { passive: true });
+      }
+
+      function renderBookTOC() {
+        const ul = byId("book-toc");
+        ul.innerHTML = "";
+        const readSet = new Set(state.book?.readChapters || []);
+        (state.book?.chapters || []).forEach((ch) => {
+          const li = document.createElement("li");
+          li.className = "nav-item";
+          const btn = document.createElement("button");
+          btn.className = "chapter-btn";
+          if (readSet.has(ch.url)) btn.classList.add("read");
+
+          const dot = document.createElement("button");
+          dot.className = "dot";
+          dot.setAttribute(
+            "aria-label",
+            readSet.has(ch.url) ? "Marcar como não lido" : "Marcar como lido"
+          );
+          dot.title = readSet.has(ch.url)
+            ? "Marcar como não lido"
+            : "Marcar como lido";
+
+          // Add click handler for toggle functionality
+          dot.addEventListener("click", (e) => {
+            e.stopPropagation(); // Prevent chapter opening
+            const wasRead = readSet.has(ch.url);
+            toggleChapterReadStatus(ch.url);
+            // Update the readSet for immediate UI feedback
+            if (wasRead) {
+              readSet.delete(ch.url);
+              btn.classList.remove("read");
+              dot.setAttribute("aria-label", "Marcar como lido");
+              dot.title = "Marcar como lido";
+            } else {
+              readSet.add(ch.url);
+              btn.classList.add("read");
+              dot.setAttribute("aria-label", "Marcar como não lido");
+              dot.title = "Marcar como não lido";
+            }
+          });
+
+          const title = document.createElement("span");
+          title.className = "chapter-title";
+          title.textContent = ch.title;
+          btn.appendChild(dot);
+          btn.appendChild(title);
+
+          // Add click handler to the title area (not the whole button to avoid conflict with dot)
+          title.addEventListener("click", () => {
+            // If chapter is already read, restore its scroll position
+            // If not read, start from top
+            const isRead = readSet.has(ch.url);
+            openChapter(ch.url, !isRead);
+          });
+
+          li.appendChild(btn);
+          // Inner TOC mount point (when active)
+          const sub = document.createElement("div");
+          sub.className = "toc";
+          sub.style.display = "none";
+          li.appendChild(sub);
+          ul.appendChild(li);
+        });
+      }
+
+      function createChapterNavigation() {
+        if (!state.book?.chapters || state.book.chapters.length <= 1) {
+          return null; // No navigation needed for single chapter books
+        }
+
+        const currentIndex = state.book.chapters.findIndex(
+          (ch) => ch.url === state.chapterUrl
+        );
+        if (currentIndex === -1) return null;
+
+        const navDiv = document.createElement("nav");
+        navDiv.className = "chapter-nav";
+        navDiv.setAttribute("aria-label", "Navegação entre capítulos");
+
+        // Previous chapter button
+        if (currentIndex > 0) {
+          const prevChapter = state.book.chapters[currentIndex - 1];
+          const prevBtn = document.createElement("button");
+          prevBtn.className = "chapter-nav-btn prev";
+          prevBtn.setAttribute(
+            "aria-label",
+            `Capítulo anterior: ${prevChapter.title}`
+          );
+
+          prevBtn.innerHTML = `
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m15 18-6-6 6-6"/>
+            </svg>
+            <div class="nav-text">
+              <span class="nav-label">Anterior</span>
+              <span class="nav-title">${prevChapter.title}</span>
+            </div>
+          `;
+
+          prevBtn.addEventListener("click", () => {
+            openChapter(prevChapter.url, true);
+          });
+
+          navDiv.appendChild(prevBtn);
+        } else {
+          // Empty placeholder to maintain space-between layout
+          navDiv.appendChild(document.createElement("div"));
+        }
+
+        // Next chapter button
+        if (currentIndex < state.book.chapters.length - 1) {
+          const nextChapter = state.book.chapters[currentIndex + 1];
+          const nextBtn = document.createElement("button");
+          nextBtn.className = "chapter-nav-btn next";
+          nextBtn.setAttribute(
+            "aria-label",
+            `Próximo capítulo: ${nextChapter.title}`
+          );
+
+          nextBtn.innerHTML = `
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m9 18 6-6-6-6"/>
+            </svg>
+            <div class="nav-text">
+              <span class="nav-label">Próximo</span>
+              <span class="nav-title">${nextChapter.title}</span>
+            </div>
+          `;
+
+          nextBtn.addEventListener("click", () => {
+            openChapter(nextChapter.url, true);
+          });
+
+          navDiv.appendChild(nextBtn);
+        }
+
+        return navDiv;
+      }
+
+      async function openChapter(url, startFromTop = false) {
+        try {
+          byId("loader").style.display = "block";
+
+          // Save progress of current chapter before opening new one
+          if (state.chapterUrl && state.chapterUrl !== url) {
+            saveScrollProgress();
+          }
+
+          state.chapterUrl = url;
+
+          // Update book's last chapter URL immediately
+          if (state.book) {
+            state.book.lastChapterUrl = url;
+            upsertBook(state.book);
+          }
+
+          const md = await fetchText(url);
+          const article = byId("article");
+          const base = baseOfRaw(url);
+          const html = marked.parse(sanitizeMarkdown(md), {
+            mangle: false,
+            headerIds: true,
+          });
+          article.innerHTML = html;
+          rewriteResourceLinks(base, article);
+
+          // Add chapter navigation at the end
+          const chapterNav = createChapterNavigation();
+          if (chapterNav) {
+            article.appendChild(chapterNav);
+          }
+
+          // Build inner TOC
+          const { toc, headings } = buildInnerTOC(article);
+
+          // Expand the corresponding TOC slot under the active chapter
+          const idx = (state.book.chapters || []).findIndex(
+            (c) => c.url === url
+          );
+
+          if (idx >= 0) {
+            const ul = byId("book-toc");
+            // Hide all TOCs first
+            $$(":scope > li .toc", ul).forEach(
+              (t, i) => (t.style.display = i === idx ? "grid" : "none")
+            );
+
+            // Find the correct mount point and insert TOC
+            const host = $$(":scope > li", ul)[idx];
+            const mount = host?.querySelector(".toc");
+
+            if (mount && toc.children.length > 0) {
+              mount.innerHTML = "";
+              mount.appendChild(toc);
+              mount.style.display = "grid"; // Ensure TOC is visible
+              observeHeadings(headings, toc);
+            } else if (!toc.children.length) {
+              // No headings found, hide TOC area
+              if (mount) {
+                mount.style.display = "none";
+              }
+            }
+          }
+          showView("reader");
+          setCanonical(url);
+          // restore progress - don't auto-mark as read anymore
+          await sleep(10);
+
+          // Control scroll position based on navigation context
+          if (startFromTop) {
+            // Start from top when navigating via chapter buttons
+            byId("content-scroll").scrollTo({ top: 0, behavior: "smooth" });
+          } else {
+            // Restore saved position when opening from history or initial load
+            restoreScrollProgress();
+          }
+
+          attachScrollSaver();
+
+          // Check if already at the end after restoring scroll position
+          setTimeout(() => {
+            checkIfChapterCompleted();
+          }, 100);
+
+          // Close sidebar on mobile after chapter selection
+          closeSidebarOnMobile();
+        } catch (e) {
+          byId("article").innerHTML = `<div class="error">${
+            (e && e.message) || "Erro ao abrir capítulo"
+          }</div>`;
+        } finally {
+          byId("loader").style.display = "none";
+        }
+      }
+
+      async function loadBookFromUrl(inputUrl) {
+        const rawIndex = toRawUrl(inputUrl);
+        const base = baseOfRaw(rawIndex);
+        byId("loader").style.display = "block";
+        try {
+          // Load index markdown
+          const md = await fetchText(rawIndex);
+
+          // Extract book information including cover image
+          const bookInfo = extractBookInfoFromMarkdown(md, base);
+
+          // Determine title from extracted info or fallback to regex
+          let title = bookInfo.title || "Livro";
+          if (!bookInfo.title) {
+            const m = md.match(/^\s*#\s+(.+)$/m);
+            if (m) title = m[1].trim();
+          }
+
+          const chapters = extractChaptersFromMarkdown(md, base);
+          const isMulti = chapters.length > 0;
+          const book = {
+            id: rawIndex,
+            title: title || "Livro",
+            indexUrl: rawIndex,
+            baseRaw: base,
+            coverImage: bookInfo.coverImage, // Add cover image
+            chapters: isMulti
+              ? chapters
+              : [{ title: title || "Documento", url: rawIndex }],
+            lastChapterUrl: undefined,
+            lastScroll: 0,
+            readChapters: [],
+          };
+          state.book = upsertBook(book);
+          byId("book-title").textContent = state.book.title;
+          renderBookTOC();
+          // Open last or first chapter
+          const chapterToOpen =
+            state.book.lastChapterUrl || state.book.chapters[0].url;
+          await openChapter(chapterToOpen);
+          renderHistory();
+        } catch (e) {
+          showView("home");
+          alert((e && e.message) || "Erro ao carregar livro");
+        } finally {
+          byId("loader").style.display = "none";
+        }
+      }
+
+      async function openBookFromHistory(id) {
+        const b = readHistory().find((x) => x.id === id);
+        if (!b) return;
+        state.book = b;
+        byId("book-title").textContent = state.book.title;
+        renderBookTOC();
+        const chapterToOpen =
+          b.lastChapterUrl || b.chapters?.[0]?.url || b.indexUrl;
+        await openChapter(chapterToOpen);
+      }
+
+      // Events
+      byId("load-btn").addEventListener("click", () => {
+        const url = byId("url-input").value.trim();
+        if (!url) return;
+        loadBookFromUrl(url);
+      });
+      byId("url-input").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") byId("load-btn").click();
+      });
+      byId("clear-history").addEventListener("click", () => {
+        if (
+          confirm(
+            "Tem certeza que deseja apagar todo o histórico e progresso de leitura?"
+          )
+        ) {
+          clearAllBooksData();
+          renderHistory();
+        }
+      });
+
+      // Exit reading mode button
+      byId("exit-reading-btn").addEventListener("click", exitReadingMode);
+
+      // Sidebar toggle functionality
+      let sidebarOpen = false;
+
+      function toggleSidebar() {
+        const sidebar = document.querySelector(".sidebar");
+        const toggleBtn = byId("sidebar-toggle");
+
+        sidebarOpen = !sidebarOpen;
+
+        if (sidebarOpen) {
+          sidebar.classList.add("open");
+          toggleBtn.setAttribute("aria-expanded", "true");
+        } else {
+          sidebar.classList.remove("open");
+          toggleBtn.setAttribute("aria-expanded", "false");
+        }
+      }
+
+      function closeSidebarOnMobile() {
+        if (window.innerWidth <= 900 && sidebarOpen) {
+          toggleSidebar();
+        }
+      }
+
+      // Event listeners for sidebar
+      byId("sidebar-toggle").addEventListener("click", toggleSidebar);
+
+      // Close sidebar when clicking outside on mobile
+      document.addEventListener("click", (e) => {
+        const sidebar = document.querySelector(".sidebar");
+        const toggleBtn = byId("sidebar-toggle");
+
+        if (
+          window.innerWidth <= 900 &&
+          sidebarOpen &&
+          !sidebar.contains(e.target) &&
+          !toggleBtn.contains(e.target)
+        ) {
+          toggleSidebar();
+        }
+      });
+
+      // Close sidebar on window resize if switching to desktop
+      window.addEventListener("resize", () => {
+        if (window.innerWidth > 900 && sidebarOpen) {
+          const sidebar = document.querySelector(".sidebar");
+          sidebar.classList.remove("open");
+          sidebarOpen = false;
+          byId("sidebar-toggle").setAttribute("aria-expanded", "false");
+        }
+      });
+
+      // Keyboard navigation for chapters
+      document.addEventListener("keydown", (e) => {
+        // Only handle navigation when in reader view and not typing in an input
+        if (
+          state.page !== "reader" ||
+          e.target.tagName === "INPUT" ||
+          e.target.tagName === "TEXTAREA" ||
+          e.target.isContentEditable
+        ) {
+          return;
+        }
+
+        if (!state.book?.chapters || state.book.chapters.length <= 1) {
+          return;
+        }
+
+        const currentIndex = state.book.chapters.findIndex(
+          (ch) => ch.url === state.chapterUrl
+        );
+        if (currentIndex === -1) return;
+
+        // Left arrow - previous chapter
+        if (e.key === "ArrowLeft" && currentIndex > 0) {
+          e.preventDefault();
+          const prevChapter = state.book.chapters[currentIndex - 1];
+          openChapter(prevChapter.url, true);
+        }
+
+        // Right arrow - next chapter
+        if (
+          e.key === "ArrowRight" &&
+          currentIndex < state.book.chapters.length - 1
+        ) {
+          e.preventDefault();
+          const nextChapter = state.book.chapters[currentIndex + 1];
+          openChapter(nextChapter.url, true);
+        }
+      });
+
+      // Init
+      function init() {
+        marked.setOptions({
+          gfm: true,
+          breaks: false,
+          mangle: false,
+          headerIds: true,
+        });
+        renderHistory();
+        showView("home");
+        setCanonical();
+      }
+      init();
+    </script>
+  </body>
+</html>
