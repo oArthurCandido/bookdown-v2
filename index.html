@@ -113,6 +113,12 @@
           display: none;
         }
       }
+      @media (max-width: 768px) {
+        .container.header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
 
       .container {
         max-width: 1200px;
@@ -123,6 +129,7 @@
         justify-content: space-between;
         gap: 16px;
       }
+
       .header-left {
         display: flex;
         align-items: center;
@@ -130,6 +137,12 @@
       }
       .hamburger {
         display: none;
+      }
+      .load-row {
+        display: flex;
+        gap: 10px;
+        align-items: center; /* Alinhamento vertical */
+        flex: 1;
       }
       @media (max-width: 900px) {
         .container {
@@ -172,12 +185,6 @@
         color: hsl(var(--muted));
       }
 
-      .load-row {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 10px;
-        align-items: center; /* Alinhamento vertical */
-      }
       .input {
         width: 100%;
         height: 42px;
@@ -725,7 +732,7 @@
     <div class="reading-progress" id="reading-progress"></div>
     <div class="app-shell" id="app">
       <header class="site-header">
-        <div class="container">
+        <div class="container header">
           <div class="header-left">
             <button
               id="sidebar-toggle"
@@ -770,7 +777,7 @@
             </button>
             <div class="brand" aria-label="GitBook Reader">
               <div class="brand-badge" aria-hidden="true"></div>
-              <h1>GitBook Reader</h1>
+              <h1>Bookdown</h1>
             </div>
           </div>
           <div class="load-row" role="search">
@@ -835,15 +842,6 @@
       const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
       const byId = (id) => document.getElementById(id);
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-      // Signature ambient light following pointer
-      document.addEventListener("pointermove", (e) => {
-        const r = document.documentElement.style;
-        const x = (e.clientX / window.innerWidth) * 100;
-        const y = (e.clientY / window.innerHeight) * 100;
-        r.setProperty("--mx", x + "%");
-        r.setProperty("--my", y + "%");
-      });
 
       // Local Storage Keys
       const LS_HISTORY = "gbreader.history.v1";
@@ -1101,6 +1099,11 @@
             img.src = b.coverImage;
             img.alt = `Capa do livro: ${b.title}`;
             img.loading = "lazy";
+            img.style.cursor = "pointer";
+            img.title = "Clique para abrir o livro";
+
+            // Add click handler to open book
+            img.addEventListener("click", () => openBookFromHistory(b.id));
 
             // Add error handling for failed image loads
             img.addEventListener("error", () => {
@@ -1109,6 +1112,10 @@
               placeholder.className = "book-cover-placeholder";
               placeholder.textContent = "📚";
               placeholder.title = "Erro ao carregar imagem de capa";
+              placeholder.style.cursor = "pointer";
+              placeholder.addEventListener("click", () =>
+                openBookFromHistory(b.id)
+              );
               img.parentNode.replaceChild(placeholder, img);
             });
 
@@ -1117,7 +1124,11 @@
             const placeholder = document.createElement("div");
             placeholder.className = "book-cover-placeholder";
             placeholder.textContent = "📚";
-            placeholder.title = "Sem imagem de capa disponível";
+            placeholder.title = "Clique para abrir o livro";
+            placeholder.style.cursor = "pointer";
+            placeholder.addEventListener("click", () =>
+              openBookFromHistory(b.id)
+            );
             li.appendChild(placeholder);
           }
 
@@ -1125,6 +1136,9 @@
           const title = document.createElement("h3");
           title.className = "history-title";
           title.textContent = b.title || "Sem título";
+          title.style.cursor = "pointer";
+          title.title = "Clique para abrir o livro";
+          title.addEventListener("click", () => openBookFromHistory(b.id));
 
           const meta = document.createElement("p");
           meta.className = "history-meta";
