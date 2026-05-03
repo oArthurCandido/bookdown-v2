@@ -1,6 +1,6 @@
 # Bookdown Application Overview
 
-Bookdown is a lightweight, single-file web application designed to read Markdown-based books or documentation directly from GitHub repositories. It provides a "Kindle-like" reading experience with progress persistence and navigation features.
+Bookdown is a high-performance, responsive web application designed to read Markdown-based books or documentation directly from GitHub repositories. It provides a "Kindle-like" reading experience with progress persistence, custom typography, and navigation features. It was recently migrated from a legacy single-file Vanilla JS application to a modern Next.js architecture.
 
 ## Key Features
 - **GitHub Integration**: Automatically converts GitHub blob URLs to raw content URLs.
@@ -10,30 +10,30 @@ Bookdown is a lightweight, single-file web application designed to read Markdown
 - **Responsive Design**: Optimized for both desktop and mobile reading (Reading Mode).
 
 ## Technology Stack
-- **Structure/Logic**: Vanilla HTML5, Javascript (ES6+).
-- **Styling**: Vanilla CSS3 with HSL variables for theme control.
-- **Markdown Rendering**: [Marked.js](https://marked.js.org/).
-- **Persistence**: `localStorage` (History, Progress, Read Status).
+- **Framework**: Next.js (App Router), React 18+.
+- **State Management**: Zustand (for global book data, appearance settings, and progress persistence).
+- **Styling**: Tailwind CSS with Shadcn/UI for components, next-themes for dark mode.
+- **Markdown Rendering**: [Marked.js](https://marked.js.org/) for Markdown to HTML conversion.
+- **Data Fetching**: React Query (TanStack Query) for fetching Markdown contents.
+- **Persistence**: `LocalStorageAdapter` (extensible via `StorageAdapter` interface for future cloud/auth integration).
 
 ## Core Data Structures
-- **State Object**:
-  ```javascript
-  let state = {
-    page: "home" | "reader",
-    book: {
-      id: string (rawIndexUrl),
-      title: string,
-      indexUrl: string,
-      baseRaw: string,
-      coverImage: string | null,
-      chapters: [{ title, url }],
-      lastChapterUrl: string,
-      lastScroll: number,
-      readChapters: string[] // URLs of read chapters
-    },
-    chapterUrl: string,
-    observer: IntersectionObserver | null
-  };
+- **Zustand Store (`useBookStore`)**:
+  ```typescript
+  interface BookState {
+    books: Book[];
+    activeBookId: string | null;
+    isLoading: boolean;
+    // Actions for adding books, toggling read status, and updating progress
+  }
+  ```
+- **Zustand Store (`useAppearanceStore`)**:
+  ```typescript
+  interface AppearanceState {
+    fontFamily: 'sans' | 'serif';
+    fontSize: number;
+    // Persists typography settings
+  }
   ```
 
 ## URL Resolution Logic

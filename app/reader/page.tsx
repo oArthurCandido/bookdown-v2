@@ -32,6 +32,7 @@ function ReaderContent() {
   const [activeChapterUrl, setActiveChapterUrl] = React.useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [headings, setHeadings] = React.useState<{ id: string; text: string; level: number }[]>([]);
+  const [activeHeadingId, setActiveHeadingId] = React.useState<string | null>(null);
   const [progress, setProgress] = React.useState(0);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const throttleTimeout = React.useRef<NodeJS.Timeout | null>(null);
@@ -125,10 +126,32 @@ function ReaderContent() {
             markChapterRead(activeBook.id, activeChapterUrl);
           }
 
+          // Find active heading
+          let currentHeadingId: string | null = null;
+          const scrollerRect = scroller.getBoundingClientRect();
+          for (let i = headings.length - 1; i >= 0; i--) {
+            const h = document.getElementById(headings[i].id);
+            if (h) {
+              const rect = h.getBoundingClientRect();
+              if (rect.top <= scrollerRect.top + 150) { // 150px threshold from top of scroller
+                currentHeadingId = headings[i].id;
+                break;
+              }
+            }
+          }
+          
+          if (currentHeadingId !== activeHeadingId) {
+            setActiveHeadingId(currentHeadingId);
+          }
+
           // Throttle saving progress to avoid hitting storage too much
           if (!throttleTimeout.current) {
             throttleTimeout.current = setTimeout(() => {
-              updateBookProgress(activeBook.id, activeChapterUrl, scrollTop);
+              if (currentHeadingId) {
+                updateBookProgress(activeBook.id, activeChapterUrl, currentHeadingId);
+              } else {
+                updateBookProgress(activeBook.id, activeChapterUrl, scrollTop);
+              }
               throttleTimeout.current = null;
             }, 500);
           }
@@ -141,7 +164,7 @@ function ReaderContent() {
 
     scroller.addEventListener("scroll", handleScroll, { passive: true });
     return () => scroller.removeEventListener("scroll", handleScroll);
-  }, [activeBook, activeChapterUrl, markChapterRead, updateBookProgress]);
+  }, [activeBook, activeChapterUrl, headings, activeHeadingId, markChapterRead, updateBookProgress]);
 
   // Restore scroll position when chapter loads
   React.useEffect(() => {
@@ -151,9 +174,19 @@ function ReaderContent() {
 
         setTimeout(async () => {
           const savedProgress = await storageAdapter.getProgress(activeBook.baseRaw, activeChapterUrl);
-          if (scrollRef.current) {
-            if (savedProgress > 0) {
-              scrollRef.current.scrollTo({ top: savedProgress });
+          if (scrollRef.current && savedProgress !== null) {
+            if (typeof savedProgress === 'string') {
+              const el = document.getElementById(savedProgress);
+              if (el) {
+                const scroller = scrollRef.current;
+                const scrollerRect = scroller.getBoundingClientRect();
+                const elRect = el.getBoundingClientRect();
+                const scrollTop = scroller.scrollTop;
+                scroller.scrollTo({ top: scrollTop + (elRect.top - scrollerRect.top) - 20, behavior: "auto" });
+                setActiveHeadingId(savedProgress);
+              }
+            } else if (savedProgress > 0) {
+              scrollRef.current.scrollTo({ top: savedProgress, behavior: "auto" });
             }
             
             // Mark as restored for this chapter so it doesn't jump while scrolling
@@ -207,6 +240,7 @@ function ReaderContent() {
           isOpen={sidebarOpen}
           setIsOpen={setSidebarOpen}
           headings={headings}
+          activeHeadingId={activeHeadingId}
         />
 
         <main 

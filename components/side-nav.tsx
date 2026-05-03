@@ -13,6 +13,7 @@ interface SideNavProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   headings?: { id: string; text: string; level: number }[];
+  activeHeadingId?: string | null;
 }
 
 export function SideNav({
@@ -23,8 +24,13 @@ export function SideNav({
   isOpen,
   setIsOpen,
   headings = [],
+  activeHeadingId,
 }: SideNavProps) {
   const readSet = new Set(book.readChapters || []);
+
+  const activeHeadingIndex = activeHeadingId 
+    ? headings.findIndex((h) => h.id === activeHeadingId)
+    : -1;
 
   return (
     <>
@@ -80,40 +86,54 @@ export function SideNav({
 
                   {/* Inner TOC for active chapter */}
                   {isActive && headings.length > 0 && (
-                    <div className="ml-7 mt-1 flex flex-col gap-1 border-l-2 pl-2">
-                      {headings.map((h, i) => (
-                        <a
-                          key={`${h.id}-${i}`}
-                          href={`#${h.id}`}
-                          className={cn(
-                            "text-xs text-muted-foreground hover:text-foreground transition-colors py-1",
-                            h.level === 1 ? "font-medium" : "",
-                            h.level === 3 ? "pl-2" : "",
-                            h.level === 4 ? "pl-4" : ""
-                          )}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            const el = document.getElementById(h.id);
-                            if (el) {
-                              const scroller = el.closest('main');
-                              if (scroller) {
-                                const scrollerRect = scroller.getBoundingClientRect();
-                                const elRect = el.getBoundingClientRect();
-                                const scrollTop = scroller.scrollTop;
-                                scroller.scrollTo({
-                                  top: scrollTop + (elRect.top - scrollerRect.top) - 20, // 20px top padding
-                                  behavior: "smooth"
-                                });
-                              } else {
-                                el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    <div className="ml-7 mt-1 flex flex-col gap-1 border-l-2 border-muted pl-2 py-1">
+                      {headings.map((h, i) => {
+                        const isHeadingRead = activeHeadingIndex !== -1 && i < activeHeadingIndex;
+                        const isHeadingActive = i === activeHeadingIndex;
+
+                        return (
+                          <a
+                            key={`${h.id}-${i}`}
+                            href={`#${h.id}`}
+                            className={cn(
+                              "flex items-start gap-2 text-xs py-1 transition-colors hover:text-foreground",
+                              isHeadingActive ? "text-primary font-medium" : "text-muted-foreground",
+                              h.level === 1 ? "font-medium" : "",
+                              h.level === 3 ? "ml-2" : "",
+                              h.level === 4 ? "ml-4" : ""
+                            )}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const el = document.getElementById(h.id);
+                              if (el) {
+                                const scroller = el.closest('main');
+                                if (scroller) {
+                                  const scrollerRect = scroller.getBoundingClientRect();
+                                  const elRect = el.getBoundingClientRect();
+                                  const scrollTop = scroller.scrollTop;
+                                  scroller.scrollTo({
+                                    top: scrollTop + (elRect.top - scrollerRect.top) - 20, // 20px top padding
+                                    behavior: "smooth"
+                                  });
+                                } else {
+                                  el.scrollIntoView({ behavior: "smooth", block: "start" });
+                                }
                               }
-                            }
-                            setIsOpen(false);
-                          }}
-                        >
-                          {h.text}
-                        </a>
-                      ))}
+                              setIsOpen(false);
+                            }}
+                          >
+                            <span className={cn(
+                              "flex-shrink-0 flex items-center justify-center w-3 h-3 rounded-full border mt-0.5 transition-colors",
+                              isHeadingRead ? "bg-primary border-primary text-primary-foreground" : 
+                              isHeadingActive ? "border-primary bg-primary/20" : "border-muted-foreground/30"
+                            )}>
+                              {isHeadingRead && <CheckCircle2 className="h-2 w-2" strokeWidth={3} />}
+                              {isHeadingActive && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                            </span>
+                            <span className="line-clamp-2 leading-tight flex-1">{h.text}</span>
+                          </a>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

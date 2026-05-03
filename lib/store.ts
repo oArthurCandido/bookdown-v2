@@ -19,7 +19,7 @@ interface BookState {
   setActiveBook: (id: string | null) => void;
   markChapterRead: (bookId: string, chapterUrl: string) => Promise<void>;
   toggleChapterRead: (bookId: string, chapterUrl: string) => Promise<void>;
-  updateBookProgress: (bookId: string, chapterUrl: string, scrollPosition: number) => Promise<void>;
+  updateBookProgress: (bookId: string, chapterUrl: string, progress: number | string) => Promise<void>;
 }
 
 export const useBookStore = create<BookState>((set, get) => ({
@@ -104,17 +104,17 @@ export const useBookStore = create<BookState>((set, get) => ({
     await get().addBook(updatedBook);
   },
 
-  updateBookProgress: async (bookId: string, chapterUrl: string, scrollPosition: number) => {
+  updateBookProgress: async (bookId: string, chapterUrl: string, progress: number | string) => {
     const { books } = get();
     const book = books.find(b => b.id === bookId);
     if (!book) return;
 
     // Update last chapter url in book object
-    const updatedBook = { ...book, lastChapterUrl: chapterUrl, lastScroll: scrollPosition };
+    const updatedBook = { ...book, lastChapterUrl: chapterUrl, lastScroll: typeof progress === 'number' ? progress : undefined };
     await storageAdapter.saveBook(updatedBook);
     
     // Save specific progress via adapter
-    await storageAdapter.saveProgress(book.baseRaw, chapterUrl, scrollPosition);
+    await storageAdapter.saveProgress(book.baseRaw, chapterUrl, progress);
 
     // Refresh state
     const updatedBooks = await storageAdapter.getBooks();

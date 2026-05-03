@@ -48,20 +48,21 @@ To ensure the app can scale from `localStorage` to a full database/auth system, 
 - **Theme Toggle**: Add a `ThemeToggle` component to the Header.
 
 ## Roadmap
-1. [ ] **Setup Foundation**:
+1. [x] **Setup Foundation**:
    - Providers (React Query, ThemeProvider, Sonner).
    - Define `StorageAdapter` interface and `LocalStorageAdapter`.
-2. [ ] **Core Store**:
+2. [x] **Core Store**:
    - Implement `useBookStore` using the adapter.
-3. [ ] **Utilities**:
+3. [x] **Utilities**:
    - Port GitHub resolver and Markdown parsing logic.
-4. [ ] **UI Components**:
+4. [x] **UI Components**:
    - **Header**: Logo, `UrlInput`, `ThemeToggle`, `ExitButton`.
    - **HomeView**: `Bookshelf`, `BookCard` (with Dark Mode styles).
    - **ReaderView**: `SideNav`, `ReadingArea`, `ReadingProgress`.
-5. [ ] **Integrations**:
+5. [x] **Integrations**:
    - React Query for Markdown fetching.
    - Reading progress persistence via adapter.
-6. [ ] **Polish**:
-   - Animations (Framer Motion).
+6. [x] **Polish**:
+   - Animations (Framer Motion / Tailwind Transitions).
+   - Custom Typography settings and Themes.
    - Responsive refinements and accessibility (Aria labels).

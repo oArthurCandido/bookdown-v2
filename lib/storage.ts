@@ -22,8 +22,8 @@ export interface StorageAdapter {
   saveBook(book: Book): Promise<Book>;
   removeBook(id: string): Promise<void>;
   clearAllBooks(): Promise<void>;
-  saveProgress(bookBaseRaw: string, chapterUrl: string, scrollPosition: number): Promise<void>;
-  getProgress(bookBaseRaw: string, chapterUrl: string): Promise<number>;
+  saveProgress(bookBaseRaw: string, chapterUrl: string, progress: string | number): Promise<void>;
+  getProgress(bookBaseRaw: string, chapterUrl: string): Promise<string | number | null>;
   clearBookProgress(book: Book): Promise<void>;
 }
 
@@ -89,17 +89,26 @@ export class LocalStorageAdapter implements StorageAdapter {
     localStorage.setItem(this.LS_HISTORY, JSON.stringify([]));
   }
 
-  async saveProgress(bookBaseRaw: string, chapterUrl: string, scrollPosition: number): Promise<void> {
+  async saveProgress(bookBaseRaw: string, chapterUrl: string, progress: string | number): Promise<void> {
     if (typeof window === "undefined") return;
     const key = this.progressKey(bookBaseRaw, chapterUrl);
-    localStorage.setItem(key, String(scrollPosition));
+    localStorage.setItem(key, String(progress));
   }
 
-  async getProgress(bookBaseRaw: string, chapterUrl: string): Promise<number> {
-    if (typeof window === "undefined") return 0;
+  async getProgress(bookBaseRaw: string, chapterUrl: string): Promise<string | number | null> {
+    if (typeof window === "undefined") return null;
     const key = this.progressKey(bookBaseRaw, chapterUrl);
-    const val = Number(localStorage.getItem(key) || "0");
-    return Number.isFinite(val) && val >= 0 ? val : 0;
+    const val = localStorage.getItem(key);
+    if (val === null) return null;
+    
+    // Check if it's a number
+    const numVal = Number(val);
+    if (!isNaN(numVal) && val.trim() !== '') {
+      return numVal >= 0 ? numVal : null;
+    }
+    
+    // It's a string (heading ID)
+    return val;
   }
 
   async clearBookProgress(book: Book): Promise<void> {
