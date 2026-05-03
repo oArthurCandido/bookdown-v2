@@ -158,13 +158,6 @@ function ReaderContent() {
             
             // Mark as restored for this chapter so it doesn't jump while scrolling
             restoredChapterRef.current = activeChapterUrl;
-            
-            // Check completion for short chapters after content has rendered
-            const scroller = scrollRef.current;
-            const scrollPercentage = (scroller.scrollTop + scroller.clientHeight) / scroller.scrollHeight;
-            if (scrollPercentage >= 0.95 || scroller.scrollHeight <= scroller.clientHeight + 50) {
-              markChapterRead(activeBook.id, activeChapterUrl);
-            }
           }
         }, 150); // slight delay to allow rendering
       }
@@ -218,7 +211,7 @@ function ReaderContent() {
 
         <main 
           ref={scrollRef}
-          className="flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth"
+          className="flex-1 overflow-y-auto overflow-x-hidden relative"
         >
           {isChapterLoading ? (
             <div className="flex h-full items-center justify-center">
