@@ -4,6 +4,8 @@ import * as React from "react";
 import { marked } from "marked";
 import { resolveRelative, baseOfRaw } from "@/lib/github";
 import { Book } from "@/lib/storage";
+import { useAppearanceStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
 interface ReadingAreaProps {
   content: string;
@@ -15,6 +17,7 @@ interface ReadingAreaProps {
 export function ReadingArea({ content, book, chapterUrl, onHeadingsExtracted }: ReadingAreaProps) {
   const articleRef = React.useRef<HTMLElement>(null);
   const [html, setHtml] = React.useState("");
+  const { fontFamily, fontSize } = useAppearanceStore();
 
   React.useEffect(() => {
     // Parse markdown
@@ -79,7 +82,11 @@ export function ReadingArea({ content, book, chapterUrl, onHeadingsExtracted }: 
   return (
     <article 
       ref={articleRef}
-      className="prose prose-slate dark:prose-invert max-w-3xl mx-auto py-8 px-4 sm:px-8 pb-32"
+      className={cn(
+        "prose prose-slate dark:prose-invert max-w-3xl mx-auto py-8 px-4 sm:px-8 pb-32 transition-all",
+        fontFamily === 'serif' ? 'font-serif' : 'font-sans'
+      )}
+      style={{ fontSize: `${fontSize}px` }}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
