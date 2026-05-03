@@ -23,7 +23,11 @@ function ReaderContent() {
   const router = useRouter();
   const urlParam = searchParams.get("url");
 
-  const { books, addBook, activeBookId, setActiveBook, toggleChapterRead, updateBookProgress, markChapterRead } = useBookStore();
+  const { books, addBook, activeBookId, setActiveBook, toggleChapterRead, updateBookProgress, markChapterRead, initialize, isLoading: isStoreLoading } = useBookStore();
+
+  React.useEffect(() => {
+    initialize();
+  }, [initialize]);
   
   const [activeChapterUrl, setActiveChapterUrl] = React.useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -49,7 +53,7 @@ function ReaderContent() {
 
   // Initialize book if not in store
   React.useEffect(() => {
-    if (!rawIndexUrl) return;
+    if (isStoreLoading || !rawIndexUrl) return;
 
     if (activeBook) {
       if (activeBook.id !== activeBookId) {
@@ -85,7 +89,7 @@ function ReaderContent() {
         setIsInitializing(false);
       });
     }
-  }, [rawIndexUrl, activeBook, indexMd, addBook, activeBookId, setActiveBook, activeChapterUrl]);
+  }, [rawIndexUrl, activeBook, indexMd, addBook, activeBookId, setActiveBook, activeChapterUrl, isStoreLoading]);
 
   React.useEffect(() => {
     if (indexError) {
@@ -195,7 +199,7 @@ function ReaderContent() {
   return (
     <div className="flex h-[100svh] flex-col overflow-hidden bg-background">
       <ReadingProgress progress={progress} />
-      <Header />
+      <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
       
       <div className="flex flex-1 overflow-hidden relative">
         <SideNav 
@@ -216,18 +220,6 @@ function ReaderContent() {
           ref={scrollRef}
           className="flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth"
         >
-          {/* Mobile sidebar toggle inside content area for easy access */}
-          <div className="sticky top-0 z-10 p-4 md:hidden flex justify-start pointer-events-none">
-            <Button 
-              variant="secondary" 
-              size="icon" 
-              className="pointer-events-auto shadow-md rounded-full bg-background/80 backdrop-blur-sm"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          </div>
-
           {isChapterLoading ? (
             <div className="flex h-full items-center justify-center">
               <div className="animate-pulse flex flex-col gap-4 w-full max-w-3xl px-8">

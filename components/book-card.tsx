@@ -16,7 +16,7 @@ export function BookCard({ book, onRemove }: BookCardProps) {
   const progressPercent = chapterCount > 0 ? Math.round((readCount / chapterCount) * 100) : 0;
 
   return (
-    <Card className="flex flex-col overflow-hidden transition-all hover:shadow-md">
+    <Card className="flex flex-col overflow-hidden transition-all hover:shadow-md pt-0" >
       <div className="relative aspect-[3/4] w-full bg-muted/30 overflow-hidden group">
         {book.coverImage ? (
           <img
@@ -47,7 +47,7 @@ export function BookCard({ book, onRemove }: BookCardProps) {
         <p>{chapterCount} {chapterCount === 1 ? 'chapter' : 'chapters'}</p>
         <p>{progressPercent}% read</p>
       </CardContent>
-      <CardFooter className="p-4 pt-0 flex gap-2">
+      <CardFooter className="flex gap-2">
         <Button variant="default" className="flex-1" asChild>
           <Link href={`/reader?url=${encodeURIComponent(book.indexUrl)}`}>
             Read

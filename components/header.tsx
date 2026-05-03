@@ -3,12 +3,16 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, Search, ArrowLeft } from "lucide-react";
+import { BookOpen, Search, ArrowLeft, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ThemeToggle } from "./theme-toggle";
+import { AppearanceSettings } from "./appearance-settings";
 
-export function Header() {
+interface HeaderProps {
+  onToggleSidebar?: () => void;
+}
+
+export function Header({ onToggleSidebar }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [url, setUrl] = React.useState("");
@@ -41,21 +45,30 @@ export function Header() {
           </Link>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-1 items-center gap-2 max-w-2xl">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="url"
-              placeholder="Paste GitHub markdown URL..."
-              className="w-full pl-8 bg-muted/50"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-            />
+        {isReader ? (
+          <div className="flex flex-1 items-center gap-2 max-w-2xl px-2">
+            <Button variant="outline" size="sm" onClick={onToggleSidebar} className="flex items-center gap-2 md:hidden">
+              <Menu className="h-4 w-4" />
+              <span className="hidden sm:inline">Index</span>
+            </Button>
           </div>
-          <Button type="submit" variant="default">
-            Load
-          </Button>
-        </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-1 items-center gap-2 max-w-2xl">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="url"
+                placeholder="Paste GitHub markdown URL..."
+                className="w-full pl-8 bg-muted/50"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
+            </div>
+            <Button type="submit" variant="default">
+              Load
+            </Button>
+          </form>
+        )}
 
         <div className="flex items-center gap-2">
           {isReader && (
@@ -65,7 +78,7 @@ export function Header() {
               </Link>
             </Button>
           )}
-          <ThemeToggle />
+          <AppearanceSettings />
         </div>
       </div>
     </header>

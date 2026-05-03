@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { Book, LocalStorageAdapter, StorageAdapter } from './storage';
 
 // In a real app with DI, you might inject this. For now, we instantiate it.
@@ -126,3 +127,24 @@ export const useActiveBook = () => {
   const { books, activeBookId } = useBookStore();
   return books.find(b => b.id === activeBookId) || null;
 };
+
+interface AppearanceState {
+  fontFamily: 'sans' | 'serif';
+  fontSize: number;
+  setFontFamily: (family: 'sans' | 'serif') => void;
+  setFontSize: (size: number) => void;
+}
+
+export const useAppearanceStore = create<AppearanceState>()(
+  persist(
+    (set) => ({
+      fontFamily: 'sans',
+      fontSize: 16,
+      setFontFamily: (fontFamily) => set({ fontFamily }),
+      setFontSize: (fontSize) => set({ fontSize }),
+    }),
+    {
+      name: 'appearance-storage',
+    }
+  )
+);
